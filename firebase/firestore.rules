@@ -1,1 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
 
+    // Webブース予約（config.js の firebaseCollection と同じ名前にする）
+    match /webbooth/{dayId} {
+      allow read: if true;
+
+      // 文書の形が正しいときだけ書き込みを許可する
+      allow create, update: if
+        request.resource.data.keys().hasOnly(['pm', 'place', 'date', 'room', 'items']) &&
+        request.resource.data.place is string &&
+        request.resource.data.date is string &&
+        request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        request.resource.data.room is int &&
+        request.resource.data.room >= 1 && request.resource.data.room <= 8 &&
+        request.resource.data.pm == request.resource.data.place + '_' + request.resource.data.date.split('-')[0] + '-' + request.resource.data.date.split('-')[1] &&
+        dayId == request.resource.data.place + '_' + request.resource.data.date + '_' + string(request.resource.data.room) &&
+        request.resource.data.items is map &&
+        request.resource.data.items.size() <= 100;
+
+      allow delete: if true;
+    }
+
+    // それ以外はすべて拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
